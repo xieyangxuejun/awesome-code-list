@@ -13,3 +13,8 @@
         setOnTouchListener(new TouchMovementMethodListener());
 ```
 
+- Jetpack Room使用
+
+[sample-android-room](https://github.com/xieyangxuejun/sample-android-room)
+
+- 
