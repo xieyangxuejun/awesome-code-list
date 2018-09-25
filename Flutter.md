@@ -131,7 +131,7 @@ Doctor summary (to see all details, run flutter doctor -v):
 > flutter doctor --android-licenses //权限
 ```
 
-### 开发
+# 开发
 
 - 开发工具-VS Code
 
@@ -145,3 +145,134 @@ start vscode ==> view(command palette) ==> Extensions:Install Extensions ==> inp
 start vscode ==> view(command palette) ==> Flutter:New Project ==> waiting ==> finsh!!!!
 ```
 
+# 混合开发
+
+> 前提是先有项目,如果是全新的项目就直接创建flutter项目好了.
+
+### 配置
+
+- 根目录
+
+  - local.properties 配置sdk路径
+
+    ```groovy
+    sdk.dir=/Users/silen/Library/Android/sdk
+    flutter.sdk=/Users/silen/Programs/Dart/flutter
+    flutter.buildMode=debug
+    ```
+
+  - settings.gradle 配置
+
+    ```groovy
+    include ':app'
+    ////////👇下面是配置
+    def flutterProjectRoot = rootProject.projectDir.parentFile.toPath()
+    
+    def plugins = new Properties()
+    def pluginsFile = new File(flutterProjectRoot.toFile(), '.flutter-plugins')
+    if (pluginsFile.exists()) {
+        pluginsFile.withInputStream { stream -> plugins.load(stream) }
+    }
+    
+    plugins.each { name, path ->
+        def pluginDirectory = flutterProjectRoot.resolve(path).resolve('android').toFile()
+        include ":$name"
+        project(":$name").projectDir = pluginDirectory
+    }
+    ```
+
+  - build.gradle 配置
+
+    ```groovy
+    //添加
+    ....
+    rootProject.buildDir = '../build'
+    subprojects {
+        project.buildDir = "${rootProject.buildDir}/${project.name}"
+    }
+    subprojects {
+        project.evaluationDependsOn(':app')
+    }
+    ```
+
+- app目录下
+
+  - build.gradle配置
+
+  ```groovy
+  apply plugin: 'com.android.application'
+  .....
+  def localProperties = new Properties()
+  def localPropertiesFile = rootProject.file('local.properties')
+  if (localPropertiesFile.exists()) {
+      localPropertiesFile.withInputStream { stream ->
+          localProperties.load(stream)
+      }
+  }
+  
+  def flutterRoot = localProperties.getProperty('flutter.sdk')
+  if (flutterRoot == null) {
+      throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+  }
+  
+  apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+  
+  flutter {
+      source '../..'
+  }
+  ```
+
+  - 创建文件
+
+  ```java
+  public class MainActivity extends FlutterActivity {
+    //页面路径 - 1
+    private static final String CHANNEL = "samples.flutter.io/platform_view";
+    private static final int COUNT_REQUEST = 1;
+  
+    private MethodChannel.Result result;
+  
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+      super.onCreate(savedInstanceState);
+      GeneratedPluginRegistrant.registerWith(this);
+  
+      // 添加通道并设置回调 - 2
+      new MethodChannel(getFlutterView(), CHANNEL).setMethodCallHandler(
+              new MethodChannel.MethodCallHandler() {
+                @Override
+                public void onMethodCall(MethodCall methodCall, MethodChannel.Result result) {
+                  MainActivity.this.result = result;
+                  int count = methodCall.arguments();
+                  if (methodCall.method.equals(METHOD_SWITCH_VIEW)) {
+                    onLaunchFullScreen(count);
+                  } else {
+                    result.notImplemented();
+                  }
+                }
+              }
+      );
+    }
+  
+    private void onLaunchFullScreen(int count) {
+      Intent fullScreenIntent = new Intent(this, CountActivity.class);
+      fullScreenIntent.putExtra(CountActivity.EXTRA_COUNTER, count);
+      startActivityForResult(fullScreenIntent, COUNT_REQUEST);
+    }
+  
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+      if (requestCode == COUNT_REQUEST) {
+        if (resultCode == RESULT_OK) {
+          result.success(data.getIntExtra(CountActivity.EXTRA_COUNTER, 0));
+        } else {
+          result.error("ACTIVITY_FAILURE", "Failed while launching activity", null);
+        }
+      }
+    }
+  }
+  ```
+
+  这是在统计目录会生成一个名GeneratedPluginRegistrant的类,别修改
+
+  开始编译........
