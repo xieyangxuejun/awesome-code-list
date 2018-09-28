@@ -149,6 +149,10 @@ start vscode ==> view(command palette) ==> Flutter:New Project ==> waiting ==> f
 
 > 前提是先有项目,如果是全新的项目就直接创建flutter项目好了.
 
+## 官方文档
+
+[add flutter to your project](https://github.com/flutter/flutter/wiki/Add-Flutter-to-existing-apps#toc0)
+
 ### 配置
 
 - 根目录
